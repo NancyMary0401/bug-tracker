@@ -1,0 +1,76 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 30px;
+  background-color: #e0f7fa; /* Light cyan */
+  border-bottom: 2px solid #00838f; /* Teal */
+}
+
+.appName {
+  font-size: 1.8em;
+  color: #006064; /* Dark cyan */
+  font-weight: bold;
+}
+
+.createButton, .logoutButton {
+  background-color: #4dd0e1; /* Cyan */
+  color: #ffffff;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.createButton:hover, .logoutButton:hover {
+  background-color: #0097a7; /* Darker cyan */
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.profileDetails {
+  margin-right: 10px;
+}
+
+.profileIcon {
+  width: 40px;
+  height: 40px;
+  background-color: #00acc1; /* Cyan */
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.profileDropdown {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  background-color: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  z-index: 1000;
+}
+
+.profileDropdown p {
+  margin: 0;
+  padding: 5px 0;
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+} 
