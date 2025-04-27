@@ -26,7 +26,7 @@ export default function Dashboard() {
   const popoverRef = useRef(null);
 
   // Define status options for the status popover
-  const STATUS_OPTIONS = ['Open', 'In Progress', 'Done', 'Closed'];
+  const STATUS_OPTIONS = ['Open', 'In Progress', 'Closed'];
   
   // Add click outside handler to close popover
   useEffect(() => {
@@ -60,11 +60,19 @@ export default function Dashboard() {
   }, [user, router]);
 
   const calculateStats = () => {
+    if (!user?.username) return {
+      totalBugs: 0,
+      inProgressBugs: 0,
+      pendingApprovalBugs: 0,
+      approvedBugs: 0,
+      recentActivity: []
+    };
+
     const filteredTasks = tasks.filter(task => {
-      if (user?.role?.toLowerCase() === 'developer') {
-        return task.assignee === user.username;
+      if (user?.role?.toLowerCase() === 'manager') {
+        return true;
       }
-      return true;
+      return task.assignee === user.username;
     });
 
     const totalBugs = filteredTasks.length;
@@ -109,7 +117,16 @@ export default function Dashboard() {
   };
 
   const handleLogout = () => {
+    // Clear all states first
+    setTasks([]);
+    setSelectedTask(null);
+    setShowSidePanel(false);
+    setActiveStatusPopover(null);
+    
+    // Clear user last
     setUser(null);
+    
+    // Redirect to login
     router.push('/login');
   };
 
@@ -180,7 +197,13 @@ export default function Dashboard() {
     setTasks(prev => {
       const updated = prev.map(task => 
         task.key === taskKey 
-          ? { ...task, status: 'Pending Approval', previousStatus: task.status }
+          ? { 
+              ...task, 
+              status: 'Pending Approval', 
+              previousStatus: task.status,
+              closeReason: 'Task completed',
+              lastUpdated: new Date().toISOString()
+            }
           : task
       );
       localStorage.setItem('tasks', JSON.stringify(updated));
@@ -245,12 +268,14 @@ export default function Dashboard() {
 
   // Update the filter logic
   const filteredTasks = tasks.filter(task => {
+    if (!user?.username) return false; // Don't show any tasks if no user
+    
     const statusMatch = filterStatus === 'all' || task.status === filterStatus;
     const priorityMatch = filterPriority === 'all' || task.priority === filterPriority;
     const typeMatch = filterType === 'all' || task.type === filterType;
-    const roleMatch = user?.role?.toLowerCase() === 'developer' 
-      ? task.assignee === user.username
-      : true;
+    const roleMatch = user?.role?.toLowerCase() === 'manager' 
+      ? true
+      : task.assignee === user.username;
     return statusMatch && priorityMatch && typeMatch && roleMatch;
   });
 
@@ -347,13 +372,14 @@ export default function Dashboard() {
     setTasks(prev => {
       const updated = prev.map(t => {
         if (t.key === taskKey) {
-          // If the new status is 'Done', change it to 'Pending Approval'
-          if (newStatus === 'Done') {
+          // If the new status is 'Done' or 'Close', change it to 'Pending Approval'
+          if (newStatus === 'Done' || newStatus === 'Close') {
             return { 
               ...t, 
               status: 'Pending Approval', 
               previousStatus: t.status, 
-              lastUpdated: new Date().toISOString()
+              lastUpdated: new Date().toISOString(),
+              closeReason: newStatus === 'Close' ? 'Closed without completion' : 'Task completed'
             };
           }
           
@@ -532,6 +558,7 @@ export default function Dashboard() {
                           setActiveStatusPopover(activeStatusPopover === task.key ? null : task.key);
                         }
                       }}
+                      title={task.status === 'Pending Approval' && task.closeReason ? `${task.status} - ${task.closeReason}` : task.status}
                     >
                       {task.status}
                       {canUpdateStatus(task) && <span className={styles.statusCaret}>▼</span>}
@@ -564,8 +591,8 @@ export default function Dashboard() {
                         ) : (
                           // Regular options for other task statuses
                           STATUS_OPTIONS.filter(status => 
-                            // Don't show 'Done' or 'Closed' in the dropdown
-                            status !== 'Done' && status !== 'Closed'
+                            // Don't show 'Closed' in the dropdown
+                            status !== 'Closed'
                           ).map(status => (
                             <div 
                               key={status} 
@@ -579,17 +606,28 @@ export default function Dashboard() {
                             </div>
                           ))
                         )}
-                        {/* Add "Mark as Done" option for tasks that are not Pending Approval or Closed */}
+                        {/* Add "Mark as Done" and "Close" options for tasks that are not Pending Approval or Closed */}
                         {task.status !== 'Pending Approval' && task.status !== 'Closed' && (
-                          <div 
-                            className={styles.statusOption}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(task.key, 'Done');
-                            }}
-                          >
-                            Mark as Done
-                          </div>
+                          <>
+                            <div 
+                              className={styles.statusOption}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(task.key, 'Done');
+                              }}
+                            >
+                              Mark as Done
+                            </div>
+                            <div 
+                              className={styles.statusOption}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(task.key, 'Close');
+                              }}
+                            >
+                              Close Task
+                            </div>
+                          </>
                         )}
                       </div>
                     )}

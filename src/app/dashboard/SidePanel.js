@@ -1,11 +1,12 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import styles from './SidePanel.module.css';
 import { users } from '../../../models/users';
 import { useUser } from '../../context/UserContext';
 import TimeLoggingModal from '../../components/TimeLoggingModal';
+import Toast from '../../components/Toast';
 
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
-const STATUS_OPTIONS = ['Open', 'In Progress', 'Done', 'Closed'];
+const STATUS_OPTIONS = ['Open', 'In Progress', 'Closed'];
 const TYPE_OPTIONS = ['Bug', 'Task', 'Feature'];
 
 const PRIORITY_ICONS = {
@@ -130,6 +131,12 @@ export default function SidePanel({
   const [isEditing, setIsEditing] = useState(!task?.status?.includes('Closed') && !task?.status?.includes('Pending Approval'));
   const [showTimeLoggingModal, setShowTimeLoggingModal] = useState(false);
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [formErrors, setFormErrors] = useState({
+    title: false,
+    description: false,
+    assignee: false
+  });
   
   const [form, setForm] = useState(task ? {
     ...initialFormState,
@@ -139,6 +146,21 @@ export default function SidePanel({
   } : initialFormState);
 
   const [assigneeInput, setAssigneeInput] = useState(task?.assignee || '');
+  const [closeReason, setCloseReason] = useState(task?.closeReason || 'Closed without completion');
+
+  // Check if form is valid
+  const isFormValid = useMemo(() => {
+    return form.title?.trim() && form.description?.trim() && form.assignee?.trim();
+  }, [form.title, form.description, form.assignee]);
+
+  // Check for form errors
+  useEffect(() => {
+    setFormErrors({
+      title: isEditing && form.title?.trim() === '',
+      description: isEditing && form.description?.trim() === '',
+      assignee: isEditing && form.assignee?.trim() === ''
+    });
+  }, [form.title, form.description, form.assignee, isEditing]);
 
   // Memoized permission checks
   const permissions = useMemo(() => {
@@ -152,6 +174,7 @@ export default function SidePanel({
     return {
       canEdit: (isManager || isCreator || isAssignee) && !isPendingApproval && !isClosed,
       canMarkAsDone: isAssignee && !isPendingApproval && !isClosed,
+      canCloseTask: isAssignee && !isPendingApproval && !isClosed,
       canApproveOrReopen: isManager && isPendingApproval,
       canLogTime: isAssignee && !isClosed,
       isPendingApproval,
@@ -164,6 +187,12 @@ export default function SidePanel({
     users.filter(u => u.username.toLowerCase().includes(assigneeInput.toLowerCase())),
     [assigneeInput]
   );
+
+  // Show toast message
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -194,15 +223,61 @@ export default function SidePanel({
     }
   }, [form, isEditing, onLogTime, onSubmit, task?.key]);
 
+  const validateForm = () => {
+    const errors = {
+      title: !form.title?.trim(),
+      description: !form.description?.trim(),
+      assignee: !form.assignee?.trim()
+    };
+    
+    setFormErrors(errors);
+    return !Object.values(errors).some(Boolean);
+  };
+
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      showToast('Please fill all required fields', 'error');
+      return;
+    }
+    
     onSubmit(form);
+    showToast(task ? 'Task updated successfully' : 'Task created successfully');
+  }, [form, onSubmit, task]);
+
+  const handleCloseTask = useCallback(() => {
+    if (!validateForm()) {
+      showToast('Please fill all required fields', 'error');
+      return;
+    }
+
+    onSubmit({
+      ...form,
+      status: 'Pending Approval',
+      previousStatus: form.status,
+      closeReason: 'Closed without completion',
+      lastUpdated: new Date().toISOString()
+    });
+    
+    showToast('Task closed and sent for approval');
   }, [form, onSubmit]);
 
   const handleApprove = useCallback(async () => {
     await onApprove(task.key);
+    showToast('Task approved and closed');
     onClose();
   }, [onApprove, task?.key, onClose]);
+
+  const handleReopen = useCallback(() => {
+    onReopen(task.key);
+    showToast('Task reopened');
+  }, [onReopen, task?.key]);
+
+  const handleDelete = useCallback(() => {
+    onDelete(task.key);
+    showToast('Task deleted', 'warning');
+  }, [onDelete, task?.key]);
 
   const assignToMyself = useCallback(() => {
     if (!user?.username) return;
@@ -216,6 +291,8 @@ export default function SidePanel({
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div className={styles.sidePanel}>
+        {toast.show && <Toast message={toast.message} type={toast.type} />}
+        
         <div className={styles.panelHeader}>
           <div className={styles.panelHeaderLeft}>
             {task && <span className={styles.taskKey}>{task.key}</span>}
@@ -238,7 +315,7 @@ export default function SidePanel({
         <form onSubmit={handleSubmit} className={styles.form} noValidate>
           <div className={styles.formField}>
             <label className={styles.fieldLabel}>
-              Title
+              Title <span className={styles.requiredStar}>*</span>
             </label>
             <input 
               name="title" 
@@ -246,15 +323,18 @@ export default function SidePanel({
               onChange={handleChange} 
               required 
               disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
-              className={`${styles.textInput} ${isEditing ? styles.editable : ''}`}
+              className={`${styles.textInput} ${isEditing ? styles.editable : ''} ${formErrors.title ? styles.error : ''}`}
               aria-label="Task title"
               placeholder="Enter task title"
             />
+            {formErrors.title && isEditing && (
+              <p className={styles.errorText}>Title is required</p>
+            )}
           </div>
 
           <div className={styles.formField}>
             <label className={styles.fieldLabel}>
-              Description
+              Description <span className={styles.requiredStar}>*</span>
             </label>
             <textarea 
               name="description" 
@@ -262,11 +342,14 @@ export default function SidePanel({
               onChange={handleChange} 
               required 
               disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
-              className={`${styles.textArea} ${isEditing ? styles.editable : ''}`}
+              className={`${styles.textArea} ${isEditing ? styles.editable : ''} ${formErrors.description ? styles.error : ''}`}
               aria-label="Task description"
               placeholder="Describe the task in detail"
               rows={6}
             />
+            {formErrors.description && isEditing && (
+              <p className={styles.errorText}>Description is required</p>
+            )}
           </div>
 
           <div className={styles.formRow}>
@@ -333,6 +416,11 @@ export default function SidePanel({
               <div className={styles.statusInfo}>
                 <span className={styles.pendingTag}>Pending Approval</span>
                 <p>This task is awaiting manager approval.</p>
+                {task.closeReason && (
+                  <p className={styles.closeReason}>
+                    <strong>Close reason:</strong> {task.closeReason}
+                  </p>
+                )}
               </div>
             )}
             {task && permissions.isClosed && (
@@ -345,7 +433,7 @@ export default function SidePanel({
 
           <div className={styles.formField}>
             <label className={styles.fieldLabel}>
-              Assignee
+              Assignee <span className={styles.requiredStar}>*</span>
             </label>
             <div className={styles.assigneeInputWrapper}>
               <input
@@ -355,10 +443,14 @@ export default function SidePanel({
                 onFocus={() => setShowAssigneeDropdown(true)}
                 onBlur={() => setTimeout(() => setShowAssigneeDropdown(false), 200)}
                 disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
-                className={`${styles.textInput} ${isEditing ? styles.editable : ''}`}
+                className={`${styles.textInput} ${isEditing ? styles.editable : ''} ${formErrors.assignee ? styles.error : ''}`}
                 placeholder="Enter assignee username"
                 aria-label="Assignee"
+                required
               />
+              {formErrors.assignee && isEditing && (
+                <p className={styles.errorText}>Assignee is required</p>
+              )}
               {isEditing && !permissions.isPendingApproval && !permissions.isClosed && (
                 <button
                   type="button"
@@ -456,6 +548,7 @@ export default function SidePanel({
                 <button 
                   type="submit" 
                   className={styles.saveButton}
+                  disabled={!isFormValid}
                 >
                   Save
                 </button>
@@ -485,10 +578,23 @@ export default function SidePanel({
                 {task && permissions.canMarkAsDone && (
                   <button 
                     type="button" 
-                    onClick={() => onMarkAsDone(task.key)}
+                    onClick={() => {
+                      onMarkAsDone(task.key);
+                      showToast('Task marked as done and sent for approval');
+                    }}
                     className={styles.closeTaskButton}
                   >
                     Mark as Done
+                  </button>
+                )}
+                
+                {task && permissions.canCloseTask && (
+                  <button 
+                    type="button" 
+                    onClick={handleCloseTask}
+                    className={styles.closeTaskButton}
+                  >
+                    Close Task
                   </button>
                 )}
                 
@@ -503,7 +609,7 @@ export default function SidePanel({
                     </button>
                     <button 
                       type="button" 
-                      onClick={() => onReopen(task.key)}
+                      onClick={handleReopen}
                       className={styles.reopenButton}
                     >
                       Reopen
@@ -514,7 +620,7 @@ export default function SidePanel({
                 {task && permissions.canEdit && !permissions.isPendingApproval && !permissions.isClosed && (
                   <button 
                     type="button" 
-                    onClick={() => onDelete(task.key)}
+                    onClick={handleDelete}
                     className={styles.deleteButton}
                   >
                     Delete

@@ -7,8 +7,9 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
   const chartInstance = useRef(null);
 
   useEffect(() => {
-    if (!tasks || tasks.length === 0) {
-      return; // Don't create chart if no tasks
+    // Don't create chart if no tasks or no username
+    if (!tasks || tasks.length === 0 || !username) {
+      return;
     }
 
     if (chartInstance.current) {
@@ -27,10 +28,11 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
 
     // Filter and group tasks based on role
     const filteredTasks = tasks.filter(task => {
-      if (role?.toLowerCase() === 'developer') {
-        return task.assignee?.toLowerCase() === username?.toLowerCase();
+      if (!role || !username) return false; // Don't show any tasks if no role or username
+      if (role.toLowerCase() === 'manager') {
+        return true; // Manager sees all tasks
       }
-      return true; // Manager sees all tasks
+      return task.assignee?.toLowerCase() === username.toLowerCase();
     });
 
     const tasksByDate = last7Days.map(date => {
