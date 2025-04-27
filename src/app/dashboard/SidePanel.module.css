@@ -1,0 +1,144 @@
+.sidePanelOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sidePanel {
+  background: #f8bbd0; /* Subtle pastel pink */
+  width: 520px;
+  max-width: 98vw;
+  height: 100vh;
+  box-shadow: -8px 0 32px rgba(0,0,0,0.18);
+  padding: 32px 32px 24px 32px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s cubic-bezier(0.4,0,0.2,1);
+  overflow-y: auto;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.closeButton {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #333;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.closeButton:hover {
+  color: #1976d2;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.form label {
+  font-weight: 500;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+:global(input), :global(textarea), :global(select) {
+  border: 1px solid #b3e5fc;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 1rem;
+  background: #fff;
+  margin-top: 2px;
+}
+
+:global(textarea) {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.buttonRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.cancelButton {
+  background: #fff;
+  color: #f06292;
+  border: 1px solid #f06292;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.cancelButton:hover {
+  background: #f8bbd0;
+  color: #333;
+}
+
+.submitButton {
+  background: #b3e5fc;
+  color: #1976d2;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.submitButton:hover {
+  background: #1976d2;
+  color: #fff;
+}
+
+.typeaheadDropdown {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 2100;
+  background: #fff;
+  border: 1px solid #b3e5fc;
+  border-radius: 6px;
+  width: 100%;
+  max-height: 160px;
+  overflow-y: auto;
+  margin-top: 2px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  list-style: none;
+  padding: 0;
+}
+
+.typeaheadOption {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #1976d2;
+  background: #f8bbd0;
+  border-bottom: 1px solid #b3e5fc;
+  transition: background 0.2s;
+}
+.typeaheadOption:last-child {
+  border-bottom: none;
+}
+.typeaheadOption:hover {
+  background: #b3e5fc;
+  color: #333;
+} 
