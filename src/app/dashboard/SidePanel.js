@@ -1,367 +1,537 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import styles from './SidePanel.module.css';
 import { users } from '../../../models/users';
 import { useUser } from '../../context/UserContext';
 import TimeLoggingModal from '../../components/TimeLoggingModal';
 
+const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
+const STATUS_OPTIONS = ['Open', 'In Progress', 'Done', 'Closed'];
+const TYPE_OPTIONS = ['Bug', 'Task', 'Feature'];
+
+const PRIORITY_ICONS = {
+  Low: '🔵',
+  Medium: '🟡',
+  High: '🟠',
+  Critical: '🔴'
+};
+
+const TYPE_ICONS = {
+  Bug: '🐞',
+  Task: '📋',
+  Feature: '✨'
+};
+
+const initialFormState = {
+  title: '',
+  description: '',
+  priority: 'Medium',
+  status: 'Open',
+  assignee: '',
+  dueDate: '',
+  estimatedTime: '',
+  loggedTime: 0,
+  effort: '',
+  type: 'Bug',
+  project: '',
+};
+
+const parseEstimatedTime = (timeStr) => {
+  if (!timeStr) return 0;
+  
+  // Normalize the string by adding spaces between numbers and letters if missing
+  let normalizedStr = timeStr.trim().replace(/(\d+)([dhm])/gi, '$1 $2');
+  
+  // Try to match the format "Xd Yh Zm"
+  const matches = normalizedStr.match(/(\d+)\s*d(?:ays?)?\s*(?:(\d+)\s*h(?:ours?)?)?\s*(?:(\d+)\s*m(?:inutes?)?)?/i);
+  
+  if (matches) {
+    const days = parseInt(matches[1]) || 0;
+    const hours = parseInt(matches[2]) || 0;
+    const minutes = parseInt(matches[3]) || 0;
+    return (days * 24 * 60) + (hours * 60) + minutes;
+  }
+  
+  // Try to match just hours and minutes "Yh Zm"
+  const hoursMinMatches = normalizedStr.match(/(\d+)\s*h(?:ours?)?\s*(?:(\d+)\s*m(?:inutes?)?)?/i);
+  if (hoursMinMatches) {
+    const hours = parseInt(hoursMinMatches[1]) || 0;
+    const minutes = parseInt(hoursMinMatches[2]) || 0;
+    return (hours * 60) + minutes;
+  }
+  
+  // Try to match just minutes "Zm"
+  const minMatches = normalizedStr.match(/(\d+)\s*m(?:inutes?)?/i);
+  if (minMatches) {
+    return parseInt(minMatches[1]) || 0;
+  }
+  
+  // If it's just a number, assume it's minutes
+  if (!isNaN(parseInt(timeStr))) {
+    return parseInt(timeStr);
+  }
+  
+  return 0;
+};
+
+const calculateProgress = (loggedTime, estimatedTime) => {
+  if (!estimatedTime || estimatedTime === 0) return 0;
+  
+  // Parse estimatedTime if it's a string
+  let estimatedMinutes;
+  if (typeof estimatedTime === 'string') {
+    // Check if it has the format "0d 0h 0m" or just a number
+    if (estimatedTime.includes('d') || estimatedTime.includes('h') || estimatedTime.includes('m')) {
+      estimatedMinutes = parseEstimatedTime(estimatedTime);
+    } else {
+      estimatedMinutes = parseInt(estimatedTime) || 0;
+    }
+  } else {
+    estimatedMinutes = estimatedTime;
+  }
+    
+  if (estimatedMinutes === 0) return 0;
+  
+  // Ensure loggedTime is a number
+  const loggedMinutes = typeof loggedTime === 'string' ? parseInt(loggedTime) : loggedTime;
+  
+  const progress = (loggedMinutes / estimatedMinutes) * 100;
+  return Math.min(progress, 100); // Cap at 100%
+};
+
+const formatTime = (minutes) => {
+  if (!minutes) return '0h 0m';
+  
+  // Calculate days, hours, and minutes
+  const days = Math.floor(minutes / (24 * 60));
+  const remainingMinutes = minutes % (24 * 60);
+  const hours = Math.floor(remainingMinutes / 60);
+  const mins = remainingMinutes % 60;
+  
+  // Create output string with days, hours, and minutes
+  let result = '';
+  if (days > 0) result += `${days}d `;
+  if (hours > 0 || days > 0) result += `${hours}h `;
+  result += `${mins}m`;
+  
+  return result;
+};
+
 export default function SidePanel({ 
   onClose, 
   onSubmit, 
   onDelete, 
-  onCloseTask, 
+  onMarkAsDone, 
   onApprove, 
   onReopen,
   onLogTime,
   task
 }) {
   const { user } = useUser();
-  const [isEditing, setIsEditing] = useState(!task);
+  const [isEditing, setIsEditing] = useState(!task?.status?.includes('Closed') && !task?.status?.includes('Pending Approval'));
   const [showTimeLoggingModal, setShowTimeLoggingModal] = useState(false);
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
   
-  // Update status checks
-  const isPendingApproval = task?.status === 'Pending Approval';
-  const isClosed = task?.status === 'Closed';
-
   const [form, setForm] = useState(task ? {
-    title: task.title,
-    description: task.description,
-    priority: task.priority,
-    status: task.status,
-    assignee: task.assignee,
-    dueDate: task.dueDate,
+    ...initialFormState,
+    ...task,
     estimatedTime: task.estimatedTime || '',
     loggedTime: task.loggedTime || 0,
-    effort: task.effort,
-    type: task.type,
-    project: task.project,
-  } : {
-    title: '',
-    description: '',
-    priority: 'Medium',
-    status: 'Open',
-    assignee: '',
-    dueDate: '',
-    estimatedTime: '',
-    loggedTime: 0,
-    effort: '',
-    type: 'Bug',
-    project: '',
-  });
+  } : initialFormState);
 
   const [assigneeInput, setAssigneeInput] = useState(task?.assignee || '');
-  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
 
-  const today = new Date().toISOString().split('T')[0];
+  // Memoized permission checks
+  const permissions = useMemo(() => {
+    const isManager = user?.role?.toLowerCase() === 'manager';
+    const isCreator = task?.creator === user?.username;
+    const isAssignee = task?.assignee === user?.username;
+    const isPendingApproval = task?.status === 'Pending Approval';
+    const isClosed = task?.status === 'Closed';
+    const isDone = task?.status === 'Done';
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+    return {
+      canEdit: (isManager || isCreator || isAssignee) && !isPendingApproval && !isClosed,
+      canMarkAsDone: isAssignee && !isPendingApproval && !isClosed,
+      canApproveOrReopen: isManager && isPendingApproval,
+      canLogTime: isAssignee && !isClosed,
+      isPendingApproval,
+      isClosed
+    };
+  }, [user, task]);
 
-  const handleAssigneeInput = (e) => {
-    setAssigneeInput(e.target.value);
-    setForm({ ...form, assignee: e.target.value });
-    setShowAssigneeDropdown(true);
-  };
-
-  const handleAssigneeSelect = (username) => {
-    setForm({ ...form, assignee: username });
-    setAssigneeInput(username);
-    setShowAssigneeDropdown(false);
-  };
-
-  const handleTimeLog = (timeInMinutes) => {
-    const newLoggedTime = (form.loggedTime || 0) + timeInMinutes;
-    const updatedForm = { ...form, loggedTime: newLoggedTime };
-    setForm(updatedForm);
-    onLogTime && onLogTime(task.key, newLoggedTime);
-    setShowTimeLoggingModal(false);
-    
-    // If we're editing, we want to make sure these changes are saved
-    if (isEditing) {
-      onSubmit(updatedForm);
-    }
-  };
-
-  const parseEstimatedTime = (timeStr) => {
-    if (!timeStr) return 0;
-    const matches = timeStr.match(/(\d+)d\s*(\d+)h\s*(\d+)m/);
-    if (!matches) return 0;
-    const [_, days, hours, minutes] = matches;
-    return (parseInt(days) * 24 * 60) + (parseInt(hours) * 60) + parseInt(minutes);
-  };
-
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(assigneeInput.toLowerCase())
+  // Memoized filtered users for assignee dropdown
+  const filteredUsers = useMemo(() => 
+    users.filter(u => u.username.toLowerCase().includes(assigneeInput.toLowerCase())),
+    [assigneeInput]
   );
 
-  const handleSubmit = (e) => {
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleAssigneeInput = useCallback((e) => {
+    const value = e.target.value;
+    setAssigneeInput(value);
+    setForm(prev => ({ ...prev, assignee: value }));
+    setShowAssigneeDropdown(true);
+  }, []);
+
+  const handleAssigneeSelect = useCallback((username) => {
+    setForm(prev => ({ ...prev, assignee: username }));
+    setAssigneeInput(username);
+    setShowAssigneeDropdown(false);
+  }, []);
+
+  const handleTimeLog = useCallback((timeInMinutes) => {
+    const newLoggedTime = (form.loggedTime || 0) + timeInMinutes;
+    setForm(prev => ({ ...prev, loggedTime: newLoggedTime }));
+    onLogTime?.(task?.key, newLoggedTime);
+    setShowTimeLoggingModal(false);
+    
+    if (isEditing) {
+      onSubmit({ ...form, loggedTime: newLoggedTime });
+    }
+  }, [form, isEditing, onLogTime, onSubmit, task?.key]);
+
+  const handleSubmit = useCallback((e) => {
     e.preventDefault();
     onSubmit(form);
-  };
+  }, [form, onSubmit]);
 
-  // Update permission checks
-  const isManager = user?.role?.toLowerCase() === 'manager';
-  const isCreator = task?.creator === user?.username;
-  const isAssignee = task?.assignee === user?.username;
-  
-  const canEdit = (isManager || isCreator || isAssignee) && 
-    !isPendingApproval && !isClosed;
-  
-  const canClose = isAssignee && 
-    !isPendingApproval && !isClosed;
+  const handleApprove = useCallback(async () => {
+    await onApprove(task.key);
+    onClose();
+  }, [onApprove, task?.key, onClose]);
 
-  const canApproveOrReopen = isManager && isPendingApproval;
-
-  const canLogTime = isAssignee && !isClosed;
-
-  // Format time display
-  const formatTime = (minutes) => {
-    if (!minutes) return '0h 0m';
-    const hrs = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hrs}h ${mins}m`;
-  };
-
-  const handleApprove = async (taskKey) => {
-    await onApprove(taskKey);
-    onClose(); // Close the side panel after approval
-  };
+  const assignToMyself = useCallback(() => {
+    if (!user?.username) return;
+    setForm(prev => ({ ...prev, assignee: user.username }));
+    setAssigneeInput(user.username);
+  }, [user?.username]);
 
   return (
-    <div className={styles.sidePanelOverlay}>
+    <div 
+      className={styles.sidePanelOverlay} 
+      onClick={e => e.target === e.currentTarget && onClose()}
+    >
       <div className={styles.sidePanel}>
-        <button className={styles.closeButton} onClick={onClose}>&times;</button>
-        <h2>{task ? (isEditing ? 'Edit Task' : 'Task Details') : 'Create Task'}</h2>
-        
-        {task && canEdit && !isEditing && (
-          <button 
-            onClick={() => setIsEditing(true)}
-            className={styles.editButton}
-          >
-            <span className={styles.editIcon}>✎</span> Edit
-          </button>
-        )}
+        <div className={styles.panelHeader}>
+          <div className={styles.panelHeaderLeft}>
+            {task && <span className={styles.taskKey}>{task.key}</span>}
+            <h2>{task ? 'Task Details' : 'Create Task'}</h2>
+          </div>
+          
+          <div className={styles.panelHeaderActions}>
+            <button 
+              className={styles.closeButton} 
+              onClick={onClose}
+              aria-label="Close panel"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
 
-        <form onSubmit={handleSubmit} className={styles.form} autoComplete="off">
-          <label>Title
+        <form onSubmit={handleSubmit} className={styles.form} noValidate>
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>
+              Title
+            </label>
             <input 
               name="title" 
               value={form.title} 
               onChange={handleChange} 
               required 
-              disabled={!isEditing || isPendingApproval || isClosed}
+              disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
+              className={`${styles.textInput} ${isEditing ? styles.editable : ''}`}
+              aria-label="Task title"
+              placeholder="Enter task title"
             />
-          </label>
-          <label>Description
+          </div>
+
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>
+              Description
+            </label>
             <textarea 
               name="description" 
               value={form.description} 
               onChange={handleChange} 
               required 
-              disabled={!isEditing || isPendingApproval || isClosed}
+              disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
+              className={`${styles.textArea} ${isEditing ? styles.editable : ''}`}
+              aria-label="Task description"
+              placeholder="Describe the task in detail"
+              rows={6}
             />
-          </label>
-          <label>Priority
-            <select 
-              name="priority" 
-              value={form.priority} 
-              onChange={handleChange}
-              disabled={!isEditing || isPendingApproval || isClosed}
-            >
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
-              <option>Critical</option>
-            </select>
-          </label>
-          <label>Status
+          </div>
+
+          <div className={styles.formRow}>
+            <div className={styles.formField}>
+              <label className={styles.fieldLabel}>
+                Priority
+              </label>
+              <select 
+                name="priority" 
+                value={form.priority} 
+                onChange={handleChange}
+                disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
+                className={`${styles.select} ${isEditing ? styles.editable : ''}`}
+                aria-label="Task priority"
+              >
+                {PRIORITY_OPTIONS.map(priority => (
+                  <option key={priority} value={priority}>
+                    {PRIORITY_ICONS[priority]} {priority}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.fieldLabel}>
+                Type
+              </label>
+              <select 
+                name="type" 
+                value={form.type} 
+                onChange={handleChange}
+                disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
+                className={`${styles.select} ${isEditing ? styles.editable : ''}`}
+                aria-label="Task type"
+              >
+                {TYPE_OPTIONS.map(type => (
+                  <option key={type} value={type}>
+                    {TYPE_ICONS[type]} {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>
+              Status
+            </label>
             <select 
               name="status" 
               value={form.status} 
               onChange={handleChange}
-              disabled={!task || (!isEditing && task) || isPendingApproval || isClosed}
+              disabled={!task || (!isEditing && task) || permissions.isPendingApproval || permissions.isClosed}
+              className={`${styles.select} ${isEditing ? styles.editable : ''}`}
+              aria-label="Task status"
             >
-              <option value="Open">Open</option>
-              <option value="In Progress">In Progress</option>
+              {STATUS_OPTIONS
+                .filter(status => !(status === 'Closed' && user?.role?.toLowerCase() !== 'manager'))
+                .map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
             </select>
-          </label>
-          <label style={{ position: 'relative' }}>
-            Assignee
-            {!task && (
-              <div className={styles.assignToMyselfLink}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForm({ ...form, assignee: user.username });
-                    setAssigneeInput(user.username);
-                  }}
-                  className={styles.linkButton}
-                >
-                  Assign to myself
-                </button>
+            {task && permissions.isPendingApproval && (
+              <div className={styles.statusInfo}>
+                <span className={styles.pendingTag}>Pending Approval</span>
+                <p>This task is awaiting manager approval.</p>
               </div>
             )}
-            <span style={{
-              position: 'absolute',
-              right: '10px',
-              top: '70%',
-              transform: 'translateY(-50%)',
-              pointerEvents: 'none',
-              color: '#1976d2',
-              fontSize: '1.1em',
-              zIndex: 2
-            }}>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="9" cy="9" r="7" stroke="#1976d2" strokeWidth="2"/>
-                <line x1="14.4142" y1="14" x2="18" y2="17.5858" stroke="#1976d2" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </span>
-            <input
-              name="assignee"
-              value={assigneeInput}
-              onChange={handleAssigneeInput}
-              onFocus={() => setShowAssigneeDropdown(true)}
-              onBlur={() => setTimeout(() => setShowAssigneeDropdown(false), 100)}
-              autoComplete="off"
-              required
-              disabled={!isEditing || isPendingApproval || isClosed}
-              style={{ paddingLeft: '3px' }}
-            />
-            {showAssigneeDropdown && assigneeInput.length >= 3 && filteredUsers.length > 0 && (
-              <ul className={styles.typeaheadDropdown}>
-                {filteredUsers.map(user => (
-                  <li
-                    key={user.username}
-                    onMouseDown={() => handleAssigneeSelect(user.username)}
-                    className={styles.typeaheadOption}
-                  >
-                    {user.username} ({user.role})
-                  </li>
-                ))}
-              </ul>
+            {task && permissions.isClosed && (
+              <div className={styles.statusInfo}>
+                <span className={styles.closedTag}>Closed</span>
+                <p>This task has been closed and can no longer be edited.</p>
+              </div>
             )}
-          </label>
-          <label>Type
-            <select 
-              name="type" 
-              value={form.type} 
+          </div>
+
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>
+              Assignee
+            </label>
+            <div className={styles.assigneeInputWrapper}>
+              <input
+                type="text"
+                value={assigneeInput}
+                onChange={handleAssigneeInput}
+                onFocus={() => setShowAssigneeDropdown(true)}
+                onBlur={() => setTimeout(() => setShowAssigneeDropdown(false), 200)}
+                disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
+                className={`${styles.textInput} ${isEditing ? styles.editable : ''}`}
+                placeholder="Enter assignee username"
+                aria-label="Assignee"
+              />
+              {isEditing && !permissions.isPendingApproval && !permissions.isClosed && (
+                <button
+                  type="button"
+                  onClick={assignToMyself}
+                  className={styles.assignToMeButton}
+                >
+                  Assign to me
+                </button>
+              )}
+              {showAssigneeDropdown && assigneeInput && isEditing && (
+                <ul className={styles.assigneeDropdown}>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map(u => (
+                      <li 
+                        key={u.username}
+                        onClick={() => handleAssigneeSelect(u.username)}
+                        className={styles.assigneeOption}
+                      >
+                        <div className={styles.assigneeAvatar}>
+                          {u.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div className={styles.assigneeDetails}>
+                          <span className={styles.assigneeName}>{u.username}</span>
+                          <span className={styles.assigneeRole}>{u.role}</span>
+                        </div>
+                      </li>
+                    ))
+                  ) : (
+                    <li className={styles.noResults}>No matching users found</li>
+                  )}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>
+              Estimated Time (0d 0h 0m format)
+            </label>
+            <input
+              name="estimatedTime"
+              value={form.estimatedTime}
               onChange={handleChange}
-              disabled={!isEditing || isPendingApproval || isClosed}
-            >
-              <option>Bug</option>
-              <option>Task</option>
-              <option>Feature</option>
-            </select>
-          </label>
-          <label>Due Date
-            <input 
-              type="date" 
-              name="dueDate" 
-              value={form.dueDate} 
-              onChange={handleChange} 
-              min={today}
-              disabled={!isEditing || isPendingApproval || isClosed}
+              disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
+              className={`${styles.textInput} ${isEditing ? styles.editable : ''}`}
+              placeholder="e.g. 1d 4h 30m"
+              aria-label="Estimated time"
             />
-          </label>
-          <label>Estimated Time (e.g. 2d 4h 3m)
-            <input 
-              name="estimatedTime" 
-              value={form.estimatedTime} 
-              onChange={handleChange}
-              placeholder="Format: 1d 2h 30m"
-              disabled={!isEditing || isPendingApproval || isClosed}
-            />
-          </label>
+          </div>
 
           {task && (
-            <div className={styles.timeTrackingSection}>
-              <div className={styles.timeInfo}>
-                <div>
-                  <span>Time Logged:</span>
-                  <strong>{formatTime(form.loggedTime)}</strong>
-                  {canLogTime && isEditing && (
-                    <button 
+            <div className={styles.formField}>
+              <div className={styles.timeTrackingInfo}>
+                <div className={styles.timeTrackingHeader}>
+                  <h4>Time Tracking</h4>
+                  {permissions.canLogTime && (
+                    <button
                       type="button"
                       onClick={() => setShowTimeLoggingModal(true)}
                       className={styles.logTimeButton}
                     >
-                      +
+                      Log Time
                     </button>
                   )}
                 </div>
-                {form.estimatedTime && (
-                  <>
-                    <div>
-                      <span>Estimated:</span>
-                      <strong>{form.estimatedTime}</strong>
-                    </div>
-                    <div>
-                      <span>Remaining:</span>
-                      <strong>
-                        {formatTime(Math.max(0, parseEstimatedTime(form.estimatedTime) - (form.loggedTime || 0)))}
-                      </strong>
-                    </div>
-                  </>
-                )}
+                
+                <div className={styles.timeProgressContainer}>
+                  <div
+                    className={styles.timeProgressBar}
+                    style={{
+                      width: `${calculateProgress(task.loggedTime, task.estimatedTime)}%`
+                    }}
+                  />
+                </div>
+                
+                <div className={styles.timeDetails}>
+                  <span className={styles.loggedTime}>
+                    {formatTime(task.loggedTime || 0)}
+                  </span>
+                  <span>logged of</span>
+                  <span className={styles.estimatedTime}>
+                    {task.estimatedTime 
+                      ? formatTime(parseEstimatedTime(task.estimatedTime)) 
+                      : '0h 0m'} estimated
+                  </span>
+                </div>
               </div>
             </div>
           )}
 
-          <div className={styles.buttonContainer}>
-            <div className={styles.leftButtons}>
-              <button type="button" onClick={onClose} className={styles.cancelButton}>
-                Cancel
-              </button>
-            </div>
-            
-            <div className={styles.rightButtons}>
-              {isEditing && canClose && (
+          {/* Task action buttons */}
+          <div className={styles.actionsContainer}>
+            {isEditing ? (
+              <div className={styles.editActions}>
+                <button 
+                  type="submit" 
+                  className={styles.saveButton}
+                >
+                  Save
+                </button>
                 <button 
                   type="button" 
-                  onClick={() => onCloseTask(task.key)}
-                  className={styles.closeTaskButton}
+                  onClick={() => {
+                    if (task) {
+                      setIsEditing(false);
+                      setForm({
+                        ...initialFormState,
+                        ...task,
+                        estimatedTime: task.estimatedTime || '',
+                        loggedTime: task.loggedTime || 0,
+                      });
+                      setAssigneeInput(task.assignee || '');
+                    } else {
+                      onClose();
+                    }
+                  }}
+                  className={styles.cancelButton}
                 >
-                  Close
+                  Cancel
                 </button>
-              )}
-              
-              {canApproveOrReopen && (
-                <>
+              </div>
+            ) : (
+              <>
+                {task && permissions.canMarkAsDone && (
                   <button 
                     type="button" 
-                    onClick={() => handleApprove(task.key)}
-                    className={styles.approveButton}
+                    onClick={() => onMarkAsDone(task.key)}
+                    className={styles.closeTaskButton}
                   >
-                    Approve
+                    Mark as Done
                   </button>
+                )}
+                
+                {task && permissions.canApproveOrReopen && (
+                  <div className={styles.approvalActions}>
+                    <button 
+                      type="button" 
+                      onClick={handleApprove}
+                      className={styles.approveButton}
+                    >
+                      Approve
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => onReopen(task.key)}
+                      className={styles.reopenButton}
+                    >
+                      Reopen
+                    </button>
+                  </div>
+                )}
+                
+                {task && permissions.canEdit && !permissions.isPendingApproval && !permissions.isClosed && (
                   <button 
                     type="button" 
-                    onClick={() => onReopen(task.key)}
-                    className={styles.reopenButton}
+                    onClick={() => onDelete(task.key)}
+                    className={styles.deleteButton}
                   >
-                    Reopen
+                    Delete
                   </button>
-                </>
-              )}
-              
-              {isEditing && !isPendingApproval && !isClosed && (
-                <button type="submit" className={styles.submitButton}>
-                  {task ? 'Save Changes' : 'Create Task'}
-                </button>
-              )}
-            </div>
+                )}
+              </>
+            )}
           </div>
         </form>
-      </div>
 
-      {showTimeLoggingModal && (
-        <TimeLoggingModal
-          onClose={() => setShowTimeLoggingModal(false)}
-          onSubmit={handleTimeLog}
-          currentLoggedTime={form.loggedTime || 0}
-          estimatedTime={parseEstimatedTime(form.estimatedTime)}
-        />
-      )}
+        {showTimeLoggingModal && (
+          <TimeLoggingModal
+            onSubmit={handleTimeLog}
+            onCancel={() => setShowTimeLoggingModal(false)}
+          />
+        )}
+      </div>
     </div>
   );
 } 

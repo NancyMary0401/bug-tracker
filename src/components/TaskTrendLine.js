@@ -40,6 +40,12 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
       }).length;
     });
 
+    // Count tasks by status for the pie chart
+    const openTasks = filteredTasks.filter(task => task.status === 'Open').length;
+    const inProgressTasks = filteredTasks.filter(task => task.status === 'In Progress').length;
+    const pendingApprovalTasks = filteredTasks.filter(task => task.status === 'Pending Approval').length;
+    const closedTasks = filteredTasks.filter(task => task.status === 'Closed').length;
+
     // Create chart with role-specific configuration
     chartInstance.current = new Chart(ctx, {
       type: 'line',
@@ -51,11 +57,11 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
         datasets: [{
           label: role?.toLowerCase() === 'developer' ? 'My Tasks' : 'All Tasks',
           data: tasksByDate,
-          borderColor: '#1976d2',
-          backgroundColor: 'rgba(25, 118, 210, 0.1)',
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
           tension: 0.4,
           fill: true,
-          pointBackgroundColor: '#1976d2',
+          pointBackgroundColor: 'rgb(59, 130, 246)',
           pointRadius: 4,
           pointHoverRadius: 6,
         }]
@@ -65,13 +71,7 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
         maintainAspectRatio: false,
         plugins: {
           title: {
-            display: true,
-            text: role?.toLowerCase() === 'developer' ? 'My Task Trend (Last 7 Days)' : 'Overall Task Trend (Last 7 Days)',
-            font: {
-              size: 16,
-              weight: 'bold'
-            },
-            padding: 20
+            display: false,
           },
           legend: {
             display: false
@@ -79,6 +79,15 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
           tooltip: {
             mode: 'index',
             intersect: false,
+            backgroundColor: 'rgba(17, 24, 39, 0.8)',
+            padding: 12,
+            bodyFont: {
+              size: 13
+            },
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            },
             callbacks: {
               title: (tooltipItems) => {
                 return `Tasks on ${tooltipItems[0].label}`;
@@ -94,17 +103,38 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
             beginAtZero: true,
             ticks: {
               stepSize: 1,
-              callback: (value) => Math.floor(value)
+              callback: (value) => Math.floor(value),
+              color: '#64748b',
+              font: {
+                size: 11
+              }
             },
             title: {
               display: true,
-              text: 'Number of Tasks'
+              text: 'Number of Tasks',
+              color: '#64748b',
+              font: {
+                size: 12,
+                weight: '500'
+              }
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.05)',
+              drawBorder: false
             }
           },
           x: {
             title: {
-              display: true,
-              text: 'Date'
+              display: false
+            },
+            ticks: {
+              color: '#64748b',
+              font: {
+                size: 11
+              }
+            },
+            grid: {
+              display: false
             }
           }
         }
