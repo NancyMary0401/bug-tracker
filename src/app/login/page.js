@@ -1,6 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '../../context/UserContext';
 import styles from '../../../styles/login.module.css';
 import { authenticateUser } from '../../../controllers/authController';
 
@@ -9,12 +10,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
+  const { setUser } = useUser();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const user = authenticateUser(username, password);
     if (user) {
-      router.push(`/dashboard?role=${user.role}`);
+      setUser(user);
+      router.push(`/dashboard?role=${user.role}&username=${user.username}`);
     } else {
       setError('Invalid credentials');
     }

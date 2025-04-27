@@ -14,6 +14,41 @@
   width: 200px;
   margin: 10px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.statBox::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.statBox:hover::after {
+  opacity: 1;
+}
+
+.statBox:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.5), 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.statBox:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+.statBox:active {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
 }
 
 .statBox h2 {
@@ -26,11 +61,6 @@
   font-size: 1.5rem;
   color: #666;
   font-weight: bold;
-}
-
-.statBox:hover {
-  transform: scale(1.05);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
 }
 
 .totalIssues {
@@ -51,4 +81,168 @@
 
 :global(body) {
   background: #f8f9fa;
+}
+
+.taskOverviewHeading {
+  font-size: 24px;
+  font-weight: 600;
+  color: #172B4D;
+  margin-bottom: 16px;
+  padding: 0 24px;
+}
+
+.taskTableWrapper {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 15px;
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.taskTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: 'Segoe UI', 'Poppins', Arial, sans-serif;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.taskTable th, .taskTable td {
+  padding: 12px 18px;
+  text-align: left;
+}
+
+.taskTable th {
+  background: #f4f6fa;
+  color: #333;
+  font-weight: 600;
+  border-bottom: 2px solid #e0e4ea;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.taskTable th:hover {
+  background: #e3f2fd;
+}
+
+.taskTable tr {
+  border-bottom: 1px solid #e0e4ea;
+  transition: background 0.2s;
+}
+
+.taskTable tr:hover {
+  background: #f8fafd;
+}
+
+/* Priority badges */
+.priority, .low, .medium, .high, .critical {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: #fff;
+  background: #bdbdbd;
+}
+.low { background: #81c784; }
+.medium { background: #64b5f6; }
+.high { background: #ffb74d; }
+.critical { background: #e57373; }
+
+/* Status badges */
+.status, .open, .inprogress, .pending, .closed, .approved {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: #fff;
+  background: #bdbdbd;
+}
+.open { background: #42a5f5; }
+.inprogress { background: #ffd54f; color: #333; }
+.pending { background: #ba68c8; }
+.closed { background: #90a4ae; }
+.approved { background: #66bb6a; }
+
+.trendLineSection {
+  margin: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.taskKeyLink {
+  color: #1976d2;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.taskKeyLink:hover {
+  color: #1565c0;
+  text-decoration: underline;
+}
+
+.filterSection {
+  display: flex;
+  gap: 16px;
+  padding: 0 24px;
+  margin-bottom: 16px;
+}
+
+.filterSelect {
+  padding: 8px 12px;
+  border: 1px solid #e0e4ea;
+  border-radius: 6px;
+  background: white;
+  min-width: 150px;
+  cursor: pointer;
+}
+
+.filterSelect:hover {
+  border-color: #b3e5fc;
+}
+
+.timeTracking {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+}
+
+.timeProgress {
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progressBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: #1976d2;
+  transition: width 0.3s ease;
+}
+
+.timeDetails {
+  display: flex;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.timeDetails span:last-child {
+  color: #999;
 } 

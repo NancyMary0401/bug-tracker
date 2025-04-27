@@ -6,7 +6,9 @@ import { useUser } from '../context/UserContext';
 export default function Header({ onLogout, onCreate }) {
   const [showProfileDetails, setShowProfileDetails] = useState(false);
   const { user } = useUser();
-  const userInitials = user ? user.name.split(' ').map(name => name[0]).join('').slice(0, 2) : 'NN'; // Default initials
+  
+  // Get initials from username
+  const userInitials = user?.username ? user.username.slice(0, 2).toUpperCase() : 'NN';
 
   const toggleProfileDetails = () => {
     setShowProfileDetails(!showProfileDetails);
@@ -23,11 +25,9 @@ export default function Header({ onLogout, onCreate }) {
         <button className={styles.logoutButton} onClick={onLogout}>Logout</button>
         {showProfileDetails && (
           <div className={styles.profileDropdown}>
-            <p>{user ? user.name : 'Guest'}</p>
-            {/* Add more user details here */}
+            <p>{user ? `${user.username} (${user.role})` : 'Guest'}</p>
           </div>
         )}
-     
       </div>
     </header>
   );
