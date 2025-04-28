@@ -74,31 +74,38 @@ The application includes some sample users for testing:
 
 ## Project Structure
 
-The application follows a modular structure based on Next.js best practices:
-
-- `src/app`: Next.js App Router pages and layouts
-  - `dashboard/`: Dashboard page and story subpage
-    - `page.js`: Dashboard main page
-    - `story/page.js`: Dashboard story subpage
-  - `login/`: Login page
-    - `page.js`: Login page
-    - `login.module.css`: Login page styles
-  - `layout.js`: Root layout
-  - `page.js`: Root landing page
-  - `globals.css`, `page.module.css`: Global and landing page styles
-- `src/components`: Reusable React components
-  - `common/`: Shared components (e.g., `Header.js`)
-  - `dashboard/`: Dashboard-specific components (e.g., `TaskTrendLine.js`, `DashboardStats.js`, `SidePanel.js`, `TaskTable.js`)
-  - `ui/`: Reusable UI components (e.g., `Toast.js`, `ConfirmDialog.js`, `TimeLoggingModal.js`)
-  - `auth/`: Authentication-related components (e.g., `LoginContent.js`)
-- `src/context`: React context providers (e.g., `UserContext.js`)
-- `src/lib`: Library code and utilities
-  - `data/`: Mock and static data (e.g., `mockTasks.js`)
-  - `services/`: Service integrations (e.g., `authService.js`)
-  - `constants/`: App-wide constants (e.g., `status.js`)
-  - `utils/`: Utility functions (e.g., `date.js`)
-- `src/models`: Data models (e.g., `users.js`)
-- `src/pages`: (Empty or legacy, not used with App Router)
+```
+/bug-tracker
+├── public/
+├── src/
+│   ├── app/
+│   │   ├── dashboard/
+│   │   ├── login/
+│   │   ├── globals.css
+│   │   ├── layout.js
+│   │   ├── page.js
+│   │   └── page.module.css
+│   ├── components/
+│   │   ├── auth/
+│   │   ├── common/
+│   │   ├── dashboard/
+│   │   └── ui/
+│   ├── context/
+│   ├── lib/
+│   │   ├── data/
+│   │   ├── services/
+│   │   ├── constants/
+│   │   └── utils/
+│   ├── models/
+│   └── pages/
+├── .gitignore
+├── eslint.config.mjs
+├── jsconfig.json
+├── next.config.mjs
+├── package-lock.json
+├── package.json
+└── README.md
+```
 
 ## Dashboard Component: TaskTrendLine
 
@@ -111,26 +118,3 @@ The `TaskTrendLine` component is a key part of the dashboard, providing a visual
 ### Role-Based Filtering
 - **Manager**: Sees trends for all tasks in the system.
 - **Developer**: Sees trends only for tasks assigned to them.
-
-### Data Requirements
-- The component expects a `tasks` array, a `role` string, and a `username` string as props.
-- Each task should have at least the following fields: `createdAt` (or `created_at`), `status`, `assignee`, and `lastUpdated` (or `updatedAt`/`updated_at`).
-
-### Chart Features
-- Responsive and mobile-friendly
-- Interactive tooltips and legend
-- Color-coded lines for each task status
-
-### No Data State
-If there are no tasks, the component displays a friendly message prompting users to create tasks to see trends.
-
-You can find the implementation in `src/components/dashboard/TaskTrendLine.js`.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgements
-
-- Icons from Heroicons
-- UI inspiration from modern issue trackers like Jira and Linear
