@@ -1,14 +1,31 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styles from './Header.module.css';
-import { useUser } from '../context/UserContext';
+import { useUser } from '../../context/UserContext';
 
 const Header = ({ onLogout, onCreate }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user } = useUser();
+  const dropdownRef = useRef(null);
   
   // Get initials from username
-  const userInitials = user?.username ? user.username.slice(0, 2).toUpperCase() : 'NN';
+  const userInitials = user?.username 
+    ? user.username.slice(0, 2).toUpperCase() 
+    : 'NN';
+
+  // Handle clicks outside dropdown to close it
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsProfileOpen(false);
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <header className={styles.header}>
@@ -24,28 +41,21 @@ const Header = ({ onLogout, onCreate }) => {
           </div>
         </div>
 
-        <nav className={styles.navigation}>
-          {user?.role && (
-            <div className={styles.userRole}>
-              <svg className={styles.roleIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        <nav className={styles.nav}>
+          <div className={styles.actions}>
+            <button 
+              className={styles.createButton}
+              onClick={onCreate}
+              aria-label="Create new bug report"
+            >
+              <svg className={styles.createIcon} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span>{user.role}</span>
-            </div>
-          )}
+              <span>Create</span>
+            </button>
+          </div>
 
-          <button className={styles.createButton} onClick={onCreate}>
-            <svg className={styles.icon} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 5V19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>New Task</span>
-          </button>
-
-          <div className={styles.profileSection}>
+          <div className={styles.profileSection} ref={dropdownRef}>
             <button 
               className={styles.profileButton}
               onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -61,7 +71,7 @@ const Header = ({ onLogout, onCreate }) => {
               <div className={styles.profileDropdown}>
                 <div className={styles.userInfo}>
                   <div className={styles.userName}>{user?.username || 'User'}</div>
-                  {user?.email && <div className={styles.userEmail}>{user.email}</div>}
+                  <div className={styles.userRole}>{user?.role || 'Guest'}</div>
                 </div>
                 <div className={styles.dropdownMenu}>
                   <button className={styles.dropdownItem} onClick={onLogout}>

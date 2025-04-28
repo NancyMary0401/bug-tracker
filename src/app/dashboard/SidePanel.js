@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import styles from './SidePanel.module.css';
-import { users } from '../../../models/users';
+import { users } from '../../models/users';
 import { useUser } from '../../context/UserContext';
-import TimeLoggingModal from '../../components/TimeLoggingModal';
-import Toast from '../../components/Toast';
+import TimeLoggingModal from '../../components/ui/TimeLoggingModal';
+import Toast from '../../components/ui/Toast';
 
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 const STATUS_OPTIONS = ['Open', 'In Progress', 'Closed'];

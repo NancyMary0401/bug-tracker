@@ -3,12 +3,12 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '../../context/UserContext';
-import Header from '../../components/Header';
-import DashboardStats from '../../components/DashboardStats';
-import TaskTrendLine from '../../components/TaskTrendLine';
+import Header from '../../components/common/Header';
+import DashboardStats from '../../components/dashboard/DashboardStats';
+import TaskTrendLine from '../../components/dashboard/TaskTrendLine';
 import SidePanel from './SidePanel';
 import styles from './Dashboard.module.css';
-import ConfirmDialog from '../../components/ConfirmDialog';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 export default function Dashboard() {
   const router = useRouter();

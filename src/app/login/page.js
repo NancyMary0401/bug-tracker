@@ -1,9 +1,9 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '../../context/UserContext';
-import styles from '../../../styles/login.module.css';
-import { authenticateUser } from '../../../controllers/authController';
+import { authenticateUser } from '../../lib/services/authService';
+import styles from './login.module.css';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -13,16 +13,27 @@ export default function LoginPage() {
   const router = useRouter();
   const { setUser } = useUser();
 
+  // Automatically focus the username field on page load
+  useEffect(() => {
+    const usernameInput = document.getElementById('username');
+    if (usernameInput) {
+      usernameInput.focus();
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
     
+    // Artificial delay to simulate network request
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
     try {
       const user = authenticateUser(username, password);
       if (user) {
         setUser(user);
-        router.push(`/dashboard?role=${user.role}&username=${user.username}`);
+        router.push('/dashboard');
       } else {
         setError('Invalid username or password');
       }
@@ -37,11 +48,16 @@ export default function LoginPage() {
     <div className={styles.loginContainer}>
       <div className={styles.loginCard}>
         <div className={styles.logoContainer}>
-          <div className={styles.logo}>🐞</div>
+          <div className={styles.logo}>
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 17L12 22L22 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
           <h1 className={styles.title}>Bug Tracker</h1>
+          <h2 className={styles.subtitle}>Track and manage issues efficiently</h2>
         </div>
-        
-        <h2 className={styles.subtitle}>Sign in to your account</h2>
         
         {error && (
           <div className={styles.errorContainer}>
@@ -51,7 +67,13 @@ export default function LoginPage() {
         
         <form onSubmit={handleSubmit} className={styles.loginForm}>
           <div className={styles.inputGroup}>
-            <label htmlFor="username">Username</label>
+            <label htmlFor="username">
+              <svg className={styles.inputIcon} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Username
+            </label>
             <input 
               id="username"
               type="text" 
@@ -59,11 +81,18 @@ export default function LoginPage() {
               value={username} 
               onChange={(e) => setUsername(e.target.value)} 
               required 
+              autoComplete="username"
             />
           </div>
           
           <div className={styles.inputGroup}>
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">
+              <svg className={styles.inputIcon} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Password
+            </label>
             <input 
               id="password"
               type="password" 
@@ -71,6 +100,7 @@ export default function LoginPage() {
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
               required 
+              autoComplete="current-password"
             />
           </div>
           
