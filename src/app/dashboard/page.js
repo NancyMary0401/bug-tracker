@@ -8,6 +8,7 @@ import DashboardStats from '../../components/DashboardStats';
 import TaskTrendLine from '../../components/TaskTrendLine';
 import SidePanel from './SidePanel';
 import styles from './Dashboard.module.css';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -21,6 +22,8 @@ export default function Dashboard() {
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [activeStatusPopover, setActiveStatusPopover] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
   
   // Reference for tracking click outside
   const popoverRef = useRef(null);
@@ -159,7 +162,13 @@ export default function Dashboard() {
         );
       } else {
         // Creating new task
-        const nextKey = `TASK-${prev.length + 1}`;
+        // Find the highest existing task ID number
+        const highestId = prev.reduce((max, task) => {
+          const idNumber = parseInt(task.key.split('-')[1]);
+          return isNaN(idNumber) ? max : Math.max(max, idNumber);
+        }, 0);
+        
+        const nextKey = `TASK-${highestId + 1}`;
         const newTask = { 
           ...data, 
           key: nextKey,
@@ -182,9 +191,14 @@ export default function Dashboard() {
   }, [tasks]);
 
   const handleDeleteTask = (taskKey) => {
-    if (window.confirm('Are you sure you want to delete this task?')) {
+    setTaskToDelete(taskKey);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteTask = () => {
+    if (taskToDelete) {
       setTasks(prev => {
-        const updated = prev.filter(task => task.key !== taskKey);
+        const updated = prev.filter(task => task.key !== taskToDelete);
         localStorage.setItem('tasks', JSON.stringify(updated));
         return updated;
       });
@@ -610,6 +624,7 @@ export default function Dashboard() {
                         {task.status !== 'Pending Approval' && task.status !== 'Closed' && (
                           <>
                             <div 
+                              key="mark-as-done"
                               className={styles.statusOption}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -619,6 +634,7 @@ export default function Dashboard() {
                               Mark as Done
                             </div>
                             <div 
+                              key="close-task"
                               className={styles.statusOption}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -692,6 +708,16 @@ export default function Dashboard() {
           task={selectedTask}
         />
       )}
+      
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDeleteTask}
+        title="Delete Task"
+        message="Are you sure you want to delete this task?"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

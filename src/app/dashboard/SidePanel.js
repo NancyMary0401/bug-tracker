@@ -501,6 +501,22 @@ export default function SidePanel({
             />
           </div>
 
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>
+              Due Date
+            </label>
+            <input
+              type="date"
+              name="dueDate"
+              value={form.dueDate}
+              onChange={handleChange}
+              min={new Date().toISOString().split('T')[0]}
+              disabled={!isEditing || permissions.isPendingApproval || permissions.isClosed}
+              className={`${styles.textInput} ${isEditing ? styles.editable : ''}`}
+              aria-label="Due date"
+            />
+          </div>
+
           {task && (
             <div className={styles.formField}>
               <div className={styles.timeTrackingInfo}>

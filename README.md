@@ -65,15 +65,27 @@ Use one of the following credentials to log in:
 ```
 bug-tracker/
 ├── src/
-│   ├── app/                 # Main application routes and layouts
-│   │   ├── dashboard/       # Dashboard view with task management
-│   │   └── login/           # Authentication pages
-│   ├── components/          # Reusable UI components
-│   ├── context/             # React context for state management
-│   └── styles/              # CSS modules and global styles
-├── models/                  # Data models and mock data
-├── public/                  # Static assets
-└── package.json            # Project dependencies and scripts
+│   ├── app/                # App-based routing
+│   │   ├── layout.js       # Root layout
+│   │   ├── page.js         # Home page
+│   │   ├── login/          # Login route
+│   │   ├── dashboard/      # Dashboard route
+│   │   └── ...             # Other routes
+│   ├── components/         # All components
+│   │   ├── common/         # Common components (Header, Footer, etc.)
+│   │   ├── dashboard/      # Dashboard-specific components
+│   │   ├── auth/           # Authentication components
+│   │   ├── ui/             # UI components (Button, Card, etc.)
+│   │   └── modals/         # Modal components
+│   ├── styles/             # All styles
+│   │   ├── globals.css     # Global styles
+│   │   ├── variables.css   # CSS variables
+│   │   ├── components/     # Component-specific styles
+│   │   └── pages/          # Page-specific styles
+│   ├── utils/              # Utility functions
+│   └── context/            # Context providers (you already have this)
+│   └── hooks/              # Custom hooks
+└── services/           # API services
 ```
 
 ## Technology Stack

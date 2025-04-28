@@ -1,10 +1,21 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Chart from 'chart.js/auto';
 import styles from './TaskTrendLine.module.css';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function TaskTrendLine({ tasks = [], role = '', username = '' }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmCallback, setConfirmCallback] = useState(null);
+  const [confirmMessage, setConfirmMessage] = useState('');
+
+  // Function to show a confirmation dialog
+  const showConfirm = (message, action) => {
+    setConfirmMessage(message);
+    setConfirmCallback(() => action);
+    setShowConfirmDialog(true);
+  };
 
   useEffect(() => {
     // Don't create chart if no tasks or no username
@@ -26,7 +37,7 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
       return date.toISOString().split('T')[0];
     }).reverse();
 
-    // Filter and group tasks based on role
+    // Filter tasks based on role
     const filteredTasks = tasks.filter(task => {
       if (!role || !username) return false; // Don't show any tasks if no role or username
       if (role.toLowerCase() === 'manager') {
@@ -35,108 +46,97 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
       return task.assignee?.toLowerCase() === username.toLowerCase();
     });
 
-    const tasksByDate = last7Days.map(date => {
-      return filteredTasks.filter(task => {
-        const taskDate = new Date(task.createdAt || task.created_at).toISOString().split('T')[0];
-        return taskDate === date;
-      }).length;
+    // Calculate total tasks and completed/closed tasks for each day
+    const totalTasksByDay = [];
+    const completedTasksByDay = [];
+
+    last7Days.forEach(date => {
+      // Get tasks that existed on or before this date
+      const tasksUpToDate = filteredTasks.filter(task => {
+        const creationDate = new Date(task.createdAt || task.created_at);
+        if (isNaN(creationDate.getTime())) return false;
+        return creationDate.toISOString().split('T')[0] <= date;
+      });
+      
+      totalTasksByDay.push(tasksUpToDate.length);
+      
+      // Completed/closed tasks count
+      const completedTasks = tasksUpToDate.filter(task => {
+        if (task.status === 'Closed' || task.status === 'Pending Approval') {
+          const completionDate = new Date(task.lastUpdated || task.updatedAt || task.updated_at);
+          if (isNaN(completionDate.getTime())) return false;
+          return completionDate.toISOString().split('T')[0] <= date;
+        }
+        return false;
+      });
+      
+      completedTasksByDay.push(completedTasks.length);
     });
 
-    // Count tasks by status for the pie chart
-    const openTasks = filteredTasks.filter(task => task.status === 'Open').length;
-    const inProgressTasks = filteredTasks.filter(task => task.status === 'In Progress').length;
-    const pendingApprovalTasks = filteredTasks.filter(task => task.status === 'Pending Approval').length;
-    const closedTasks = filteredTasks.filter(task => task.status === 'Closed').length;
+    // Format dates for display
+    const formattedDates = last7Days.map(date => {
+      const dateObj = new Date(date);
+      return dateObj.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    });
 
-    // Create chart with role-specific configuration
+    // Create simple chart
     chartInstance.current = new Chart(ctx, {
-      type: 'line',
+      type: 'bar',
       data: {
-        labels: last7Days.map(date => {
-          const [year, month, day] = date.split('-');
-          return `${month}/${day}`;
-        }),
-        datasets: [{
-          label: role?.toLowerCase() === 'developer' ? 'My Tasks' : 'All Tasks',
-          data: tasksByDate,
-          borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          tension: 0.4,
-          fill: true,
-          pointBackgroundColor: 'rgb(59, 130, 246)',
-          pointRadius: 4,
-          pointHoverRadius: 6,
-        }]
+        labels: formattedDates,
+        datasets: [
+          {
+            label: 'Total',
+            data: totalTasksByDay,
+            backgroundColor: '#3b82f6',
+            barPercentage: 0.6,
+            order: 2
+          },
+          {
+            label: 'Completed',
+            data: completedTasksByDay,
+            backgroundColor: '#10b981',
+            barPercentage: 0.6,
+            order: 1
+          }
+        ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          title: {
-            display: false,
-          },
           legend: {
-            display: false
+            display: true,
+            position: 'top',
+            labels: {
+              boxWidth: 12,
+              font: {
+                size: 12
+              }
+            }
           },
           tooltip: {
-            mode: 'index',
-            intersect: false,
-            backgroundColor: 'rgba(17, 24, 39, 0.8)',
-            padding: 12,
-            bodyFont: {
-              size: 13
-            },
-            titleFont: {
-              size: 14,
-              weight: 'bold'
-            },
             callbacks: {
-              title: (tooltipItems) => {
-                return `Tasks on ${tooltipItems[0].label}`;
-              },
               label: (context) => {
-                return ` ${context.parsed.y} task(s)`;
+                return `${context.dataset.label}: ${context.parsed.y}`;
               }
             }
           }
         },
         scales: {
+          x: {
+            grid: {
+              display: false
+            }
+          },
           y: {
             beginAtZero: true,
             ticks: {
               stepSize: 1,
-              callback: (value) => Math.floor(value),
-              color: '#64748b',
-              font: {
-                size: 11
-              }
-            },
-            title: {
-              display: true,
-              text: 'Number of Tasks',
-              color: '#64748b',
-              font: {
-                size: 12,
-                weight: '500'
-              }
-            },
-            grid: {
-              color: 'rgba(0, 0, 0, 0.05)',
-              drawBorder: false
-            }
-          },
-          x: {
-            title: {
-              display: false
-            },
-            ticks: {
-              color: '#64748b',
-              font: {
-                size: 11
-              }
-            },
-            grid: {
-              display: false
+              precision: 0
             }
           }
         }
@@ -150,9 +150,29 @@ export default function TaskTrendLine({ tasks = [], role = '', username = '' }) 
     };
   }, [tasks, role, username]);
 
+  // Example function that would use a confirmation dialog
+  const handleResetData = () => {
+    showConfirm(
+      "Are you sure you want to reset the chart data?",
+      () => {
+        console.log("Data reset action would happen here");
+        // Your reset logic would go here
+      }
+    );
+  };
+
   return (
     <div className={styles.chartContainer}>
       <canvas ref={chartRef} />
+      
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showConfirmDialog}
+        onClose={() => setShowConfirmDialog(false)}
+        onConfirm={confirmCallback}
+        message={confirmMessage}
+        title="Confirm Action"
+      />
     </div>
   );
 } 
