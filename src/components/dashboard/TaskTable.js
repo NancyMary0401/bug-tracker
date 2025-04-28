@@ -250,7 +250,7 @@ export default function TaskTable({
               Title {sortField === 'title' && (sortOrder === 'asc' ? '↑' : '↓')}
             </div>
             <div className={styles.taskColumnKey}>ID</div>
-            <div className={styles.taskColumnPriority} onClick={() => {
+            <div className={styles.taskColumnPriority + ' ' + styles.mobileShow} onClick={() => {
               if (sortField === 'priority') {
                 onSortChange('priority', sortOrder === 'asc' ? 'desc' : 'asc');
               } else {
@@ -259,7 +259,7 @@ export default function TaskTable({
             }}>
               Priority {sortField === 'priority' && (sortOrder === 'asc' ? '↑' : '↓')}
             </div>
-            <div className={styles.taskColumnStatus} onClick={() => {
+            <div className={styles.taskColumnStatus + ' ' + styles.desktopShow} onClick={() => {
               if (sortField === 'status') {
                 onSortChange('status', sortOrder === 'asc' ? 'desc' : 'asc');
               } else {
@@ -286,12 +286,12 @@ export default function TaskTable({
               <div className={styles.taskColumnKey}>
                 <div className={styles.taskKey}>{task.key}</div>
               </div>
-              <div className={styles.taskColumnPriority}>
+              <div className={styles.taskColumnPriority + ' ' + styles.mobileShow}>
                 <div className={`${styles.priorityBadge} ${styles[task.priority?.toLowerCase() || 'priority']}`}>
                   {task.priority}
                 </div>
               </div>
-              <div className={styles.taskColumnStatus}>
+              <div className={styles.taskColumnStatus + ' ' + styles.desktopShow}>
                 <div 
                   className={styles.statusPopoverWrapper} 
                   ref={activeStatusPopover === task.key ? popoverRef : null}

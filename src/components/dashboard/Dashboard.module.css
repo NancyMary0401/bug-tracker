@@ -959,4 +959,24 @@
 
 .statusOption:hover .statusIcon {
   opacity: 1;
+}
+
+/* Responsive column visibility */
+.desktopShow {
+  display: block;
+}
+.mobileShow {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktopShow {
+    display: none !important;
+  }
+  .mobileShow {
+    display: block !important;
+  }
+  .taskColumnPriority {
+    min-width: 90px;
+  }
 } 

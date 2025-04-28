@@ -6,7 +6,11 @@ import TimeLoggingModal from '../ui/TimeLoggingModal';
 import Toast from '../ui/Toast';
 
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
-const STATUS_OPTIONS = ['Open', 'In Progress', 'Closed'];
+const STATUS_OPTIONS = ['Open', 'In Progress'];
+const EXTRA_STATUS_OPTIONS = [
+  { label: 'Mark as Done', value: 'MarkAsDone' },
+  { label: 'Close Task', value: 'CloseTask' }
+];
 const TYPE_OPTIONS = ['Bug', 'Task', 'Feature'];
 
 const PRIORITY_ICONS = {
@@ -401,7 +405,18 @@ export default function SidePanel({
             <select 
               name="status" 
               value={form.status} 
-              onChange={handleChange}
+              onChange={e => {
+                const value = e.target.value;
+                if (value === 'MarkAsDone') {
+                  onMarkAsDone(task.key);
+                  showToast('Task marked as done and sent for approval');
+                  return;
+                } else if (value === 'CloseTask') {
+                  handleCloseTask();
+                  return;
+                }
+                handleChange(e);
+              }}
               disabled={!task || (!isEditing && task) || permissions.isPendingApproval || permissions.isClosed}
               className={`${styles.select} ${isEditing ? styles.editable : ''}`}
               aria-label="Task status"
@@ -411,6 +426,13 @@ export default function SidePanel({
                 .map(status => (
                   <option key={status} value={status}>{status}</option>
                 ))}
+              {/* Add extra options only in edit mode and if allowed */}
+              {isEditing && permissions.canMarkAsDone && (
+                <option value="MarkAsDone">Mark as Done</option>
+              )}
+              {isEditing && permissions.canCloseTask && (
+                <option value="CloseTask">Close Task</option>
+              )}
             </select>
             {task && permissions.isPendingApproval && (
               <div className={styles.statusInfo}>
