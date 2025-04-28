@@ -8,7 +8,6 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
   const chartInstance = useRef(null);
 
   useEffect(() => {
-    // Don't create chart if no tasks or no username
     if (!tasks || tasks.length === 0 || !username) {
       return;
     }
@@ -18,8 +17,6 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
     }
 
     const ctx = chartRef.current.getContext('2d');
-    
-    // Process tasks based on role
     const today = new Date();
     const last7Days = Array.from({length: 7}, (_, i) => {
       const date = new Date(today);
@@ -27,7 +24,6 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
       return date.toISOString().split('T')[0];
     }).reverse();
 
-    // Filter tasks based on role
     const filteredTasks = tasks.filter(task => {
       if (!role || !username) return false;
       if (role.toLowerCase() === 'manager') {
@@ -36,7 +32,6 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
       return task.assignee?.toLowerCase() === username.toLowerCase();
     });
 
-    // Calculate total tasks and completed/closed tasks for each day
     const totalTasksByDay = [];
     const completedTasksByDay = [];
     const inProgressTasksByDay = [];
@@ -47,9 +42,7 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
         if (isNaN(creationDate.getTime())) return false;
         return creationDate.toISOString().split('T')[0] <= date;
       });
-      
       totalTasksByDay.push(tasksUpToDate.length);
-      
       const completedTasks = tasksUpToDate.filter(task => {
         if (task.status === 'Closed' || task.status === 'Pending Approval') {
           const completionDate = new Date(task.lastUpdated || task.updatedAt || task.updated_at);
@@ -58,17 +51,13 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
         }
         return false;
       });
-      
       completedTasksByDay.push(completedTasks.length);
-
       const inProgressTasks = tasksUpToDate.filter(task => {
         return task.status === 'In Progress';
       });
-      
       inProgressTasksByDay.push(inProgressTasks.length);
     });
 
-    // Format dates for display
     const formattedDates = last7Days.map(date => {
       const dateObj = new Date(date);
       return dateObj.toLocaleDateString('en-US', { 
@@ -77,7 +66,6 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
       });
     });
 
-    // Chart configuration
     const data = {
       labels: formattedDates,
       datasets: [
@@ -129,7 +117,6 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
       ]
     };
 
-    // Create chart
     chartInstance.current = new Chart(ctx, {
       type: 'line',
       data: data,

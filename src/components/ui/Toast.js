@@ -1,3 +1,10 @@
+/*
+ * This component has been replaced with react-hot-toast library.
+ * See implementation in SidePanel.js and other components using toast notifications.
+ * This file is kept for reference but no longer used in the application.
+ */
+
+/*
 "use client";
 import React, { useEffect } from 'react';
 import styles from './Toast.module.css';
@@ -5,17 +12,18 @@ import styles from './Toast.module.css';
 const Toast = ({ show, message, type = 'success', onHide }) => {
   useEffect(() => {
     if (show) {
+      console.log('Toast shown:', { message, type });
       const timer = setTimeout(() => {
         if (onHide) onHide();
       }, 4000);
       return () => clearTimeout(timer);
     }
-  }, [show, onHide]);
+  }, [show, onHide, message, type]);
 
   if (!show) return null;
 
   return (
-    <div className={`${styles.toast} ${styles[type]}`}>
+    <div className={`${styles.toast} ${styles[type]}`} style={{ zIndex: 9999 }}>
       <div className={styles.toastContent}>
         {type === 'success' && (
           <svg className={styles.icon} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -38,7 +46,7 @@ const Toast = ({ show, message, type = 'success', onHide }) => {
         {message}
       </div>
       <button 
-        onClick={onHide}
+        onClick={onHide ? onHide : undefined}
         style={{
           background: 'none',
           border: 'none',
@@ -57,3 +65,4 @@ const Toast = ({ show, message, type = 'success', onHide }) => {
 };
 
 export default Toast; 
+*/ 

@@ -13,7 +13,6 @@ export default function LoginContent() {
   const router = useRouter();
   const { setUser } = useUser();
 
-  // Automatically focus the username field on page load
   useEffect(() => {
     const usernameInput = document.getElementById('username');
     if (usernameInput) {
@@ -25,9 +24,6 @@ export default function LoginContent() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    
-    // Artificial delay to simulate network request
-    await new Promise(resolve => setTimeout(resolve, 800));
     
     try {
       const user = authenticateUser(username, password);

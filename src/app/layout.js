@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { UserProvider } from '../context/UserContext';
+import { Toaster } from 'react-hot-toast';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,22 @@ export default function RootLayout({ children }) {
       <body>
         <UserProvider>
           {children}
+          <Toaster position="bottom-right" toastOptions={{
+            success: {
+              duration: 3000,
+              style: {
+                background: 'var(--success-color-light)',
+                color: 'var(--success-color-dark)',
+              },
+            },
+            error: {
+              duration: 4000,
+              style: {
+                background: 'var(--error-color-light)',
+                color: 'var(--error-color-dark)',
+              },
+            },
+          }} />
         </UserProvider>
       </body>
     </html>

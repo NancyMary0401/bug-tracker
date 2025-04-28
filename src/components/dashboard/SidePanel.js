@@ -3,7 +3,7 @@ import styles from './SidePanel.module.css';
 import { users } from '../../models/users';
 import { useUser } from '../../context/UserContext';
 import TimeLoggingModal from '../ui/TimeLoggingModal';
-import Toast from '../ui/Toast';
+import toast from 'react-hot-toast';
 
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 const STATUS_OPTIONS = ['Open', 'In Progress'];
@@ -135,7 +135,6 @@ export default function SidePanel({
   const [isEditing, setIsEditing] = useState(!task?.status?.includes('Closed') && !task?.status?.includes('Pending Approval'));
   const [showTimeLoggingModal, setShowTimeLoggingModal] = useState(false);
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
-  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [formErrors, setFormErrors] = useState({
     title: false,
     description: false,
@@ -193,10 +192,10 @@ export default function SidePanel({
   );
 
   // Show toast message
-  const showToast = (message, type = 'success') => {
-    setToast({ show: true, message, type });
-    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
-  };
+  const showToast = useCallback((message, type = 'success') => {
+    console.log('Showing toast:', { message, type });
+    toast[type](message);
+  }, []);
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -242,17 +241,17 @@ export default function SidePanel({
     e.preventDefault();
     
     if (!validateForm()) {
-      showToast('Please fill all required fields', 'error');
+      toast.error('Please fill all required fields');
       return;
     }
     
     onSubmit(form);
-    showToast(task ? 'Task updated successfully' : 'Task created successfully');
+    toast.success(task ? 'Task updated successfully' : 'Task created successfully');
   }, [form, onSubmit, task]);
 
   const handleCloseTask = useCallback(() => {
     if (!validateForm()) {
-      showToast('Please fill all required fields', 'error');
+      toast.error('Please fill all required fields');
       return;
     }
 
@@ -264,23 +263,23 @@ export default function SidePanel({
       lastUpdated: new Date().toISOString()
     });
     
-    showToast('Task closed and sent for approval');
+    toast.success('Task closed and sent for approval');
   }, [form, onSubmit]);
 
   const handleApprove = useCallback(async () => {
     await onApprove(task.key);
-    showToast('Task approved and closed');
+    toast.success('Task approved and closed');
     onClose();
   }, [onApprove, task?.key, onClose]);
 
   const handleReopen = useCallback(() => {
     onReopen(task.key);
-    showToast('Task reopened');
+    toast.success('Task reopened');
   }, [onReopen, task?.key]);
 
   const handleDelete = useCallback(() => {
     onDelete(task.key);
-    showToast('Task deleted', 'warning');
+    toast.success('Task deleted', { duration: 3000 });
   }, [onDelete, task?.key]);
 
   const assignToMyself = useCallback(() => {
@@ -295,8 +294,6 @@ export default function SidePanel({
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div className={styles.sidePanel}>
-        {toast.show && <Toast message={toast.message} type={toast.type} />}
-        
         <div className={styles.panelHeader}>
           <div className={styles.panelHeaderLeft}>
             {task && <span className={styles.taskKey}>{task.key}</span>}
@@ -409,7 +406,7 @@ export default function SidePanel({
                 const value = e.target.value;
                 if (value === 'MarkAsDone') {
                   onMarkAsDone(task.key);
-                  showToast('Task marked as done and sent for approval');
+                  toast.success('Task marked as done and sent for approval');
                   return;
                 } else if (value === 'CloseTask') {
                   handleCloseTask();
@@ -605,7 +602,7 @@ export default function SidePanel({
                     type="button" 
                     onClick={() => {
                       onMarkAsDone(task.key);
-                      showToast('Task marked as done and sent for approval');
+                      toast.success('Task marked as done and sent for approval');
                     }}
                     className={styles.closeTaskButton}
                   >

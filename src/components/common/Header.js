@@ -8,12 +8,11 @@ const Header = ({ onLogout, onCreate }) => {
   const { user } = useUser();
   const dropdownRef = useRef(null);
   
-  // Get initials from username
   const userInitials = user?.username 
     ? user.username.slice(0, 2).toUpperCase() 
     : 'NN';
 
-  // Handle clicks outside dropdown to close it
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {

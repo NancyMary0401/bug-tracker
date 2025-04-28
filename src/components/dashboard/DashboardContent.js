@@ -7,9 +7,7 @@ import DashboardStats from './DashboardStats';
 import TaskTrendLine from './TaskTrendLine';
 import SidePanel from './SidePanel';
 import styles from './Dashboard.module.css';
-import ConfirmDialog from '../ui/ConfirmDialog';
 
-// Lazy load the TaskTable component
 const TaskTable = lazy(() => import('./TaskTable'));
 
 export default function DashboardContent() {
@@ -27,13 +25,10 @@ export default function DashboardContent() {
   const [sortField, setSortField] = useState(null);
   const [sortOrder, setSortOrder] = useState('asc');
   
-  // Reference for tracking click outside
   const popoverRef = useRef(null);
 
-  // Define status options for the status popover
   const STATUS_OPTIONS = ['Open', 'In Progress', 'Closed'];
   
-  // Add click outside handler to close popover
   useEffect(() => {
     function handleClickOutside(event) {
       if (activeStatusPopover && 
@@ -43,7 +38,6 @@ export default function DashboardContent() {
       }
     }
     
-    // Add the event listener only when a popover is active
     if (activeStatusPopover) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => {
@@ -85,7 +79,6 @@ export default function DashboardContent() {
     const pendingApprovalBugs = filteredTasks.filter(task => task.status === 'Pending Approval').length;
     const approvedBugs = filteredTasks.filter(task => task.status === 'Closed').length;
 
-    // Get recent activity
     const recentActivity = filteredTasks
       .filter(task => task.lastUpdated)
       .sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
@@ -122,16 +115,13 @@ export default function DashboardContent() {
   };
 
   const handleLogout = () => {
-    // Clear all states first
     setTasks([]);
     setSelectedTask(null);
     setShowSidePanel(false);
     setActiveStatusPopover(null);
     
-    // Clear user last
     setUser(null);
     
-    // Redirect to login
     router.push('/login');
   };
 
@@ -158,13 +148,10 @@ export default function DashboardContent() {
     setTasks(prev => {
       let updated;
       if (selectedTask) {
-        // Editing existing task
         updated = prev.map(task => 
           task.key === selectedTask.key ? { ...task, ...data } : task
         );
       } else {
-        // Creating new task
-        // Find the highest existing task ID number
         const highestId = prev.reduce((max, task) => {
           const idNumber = parseInt(task.key.split('-')[1]);
           return isNaN(idNumber) ? max : Math.max(max, idNumber);
@@ -187,7 +174,6 @@ export default function DashboardContent() {
     setSelectedTask(null);
   };
 
-  // Effect to notify task updates
   useEffect(() => {
     window.dispatchEvent(new Event('tasksUpdated'));
   }, [tasks]);
@@ -269,7 +255,6 @@ export default function DashboardContent() {
       return updated;
     });
     
-    // Update the selected task if it's currently being viewed
     if (selectedTask && selectedTask.key === taskKey) {
       setSelectedTask(prev => ({
         ...prev,
@@ -282,12 +267,11 @@ export default function DashboardContent() {
   const handleStatsFilter = ({ status, type }) => {
     setFilterStatus(status);
     setFilterType(type);
-    setFilterPriority('all'); // Reset priority filter when clicking stats
+    setFilterPriority('all');
   };
 
-  // Update the filter logic
   const filteredTasks = tasks.filter(task => {
-    if (!user?.username) return false; // Don't show any tasks if no user
+    if (!user?.username) return false; 
     
     const statusMatch = filterStatus === 'all' || task.status === filterStatus;
     const priorityMatch = filterPriority === 'all' || task.priority === filterPriority;
@@ -307,17 +291,14 @@ export default function DashboardContent() {
       : bValue.localeCompare(aValue);
   });
 
-  // Add formatTime helper function
   const formatTime = (minutes) => {
     if (!minutes) return '0h 0m';
     
-    // Calculate days, hours, and minutes
     const days = Math.floor(minutes / (24 * 60));
     const remainingMinutes = minutes % (24 * 60);
     const hours = Math.floor(remainingMinutes / 60);
     const mins = remainingMinutes % 60;
     
-    // Create output string with days, hours, and minutes
     let result = '';
     if (days > 0) result += `${days}d `;
     if (hours > 0 || days > 0) result += `${hours}h `;
@@ -326,14 +307,10 @@ export default function DashboardContent() {
     return result;
   };
 
-  // Add parseEstimatedTime helper function
   const parseEstimatedTime = (timeStr) => {
     if (!timeStr) return 0;
     
-    // Normalize the string by adding spaces between numbers and letters if missing
     let normalizedStr = timeStr.trim().replace(/(\d+)([dhm])/gi, '$1 $2');
-    
-    // Try to match the format "Xd Yh Zm"
     const matches = normalizedStr.match(/(\d+)\s*d(?:ays?)?\s*(?:(\d+)\s*h(?:ours?)?)?\s*(?:(\d+)\s*m(?:inutes?)?)?/i);
     
     if (matches) {
@@ -343,7 +320,6 @@ export default function DashboardContent() {
       return (days * 24 * 60) + (hours * 60) + minutes;
     }
     
-    // Try to match just hours and minutes "Yh Zm"
     const hoursMinMatches = normalizedStr.match(/(\d+)\s*h(?:ours?)?\s*(?:(\d+)\s*m(?:inutes?)?)?/i);
     if (hoursMinMatches) {
       const hours = parseInt(hoursMinMatches[1]) || 0;
@@ -351,13 +327,11 @@ export default function DashboardContent() {
       return (hours * 60) + minutes;
     }
     
-    // Try to match just minutes "Zm"
     const minMatches = normalizedStr.match(/(\d+)\s*m(?:inutes?)?/i);
     if (minMatches) {
       return parseInt(minMatches[1]) || 0;
     }
     
-    // If it's just a number, assume it's minutes
     if (!isNaN(parseInt(timeStr))) {
       return parseInt(timeStr);
     }
@@ -365,33 +339,27 @@ export default function DashboardContent() {
     return 0;
   };
 
-  // Function to check if user can update status
   const canUpdateStatus = (task) => {
     const isManager = user?.role?.toLowerCase() === 'manager';
     const isAssignee = task.assignee === user?.username;
     const isPendingApproval = task.status === 'Pending Approval';
     const isClosed = task.status === 'Closed';
     
-    // Only managers can approve tasks that are pending approval
     if (isPendingApproval) {
       return isManager;
     }
     
-    // No one can update closed tasks
     if (isClosed) {
       return false;
     }
     
-    // In other cases, either manager or assignee can change status
     return isManager || isAssignee;
   };
   
-  // Function to handle status change
   const handleStatusChange = (taskKey, newStatus) => {
     setTasks(prev => {
       const updated = prev.map(t => {
         if (t.key === taskKey) {
-          // If the new status is 'Done' or 'Close', change it to 'Pending Approval'
           if (newStatus === 'Done' || newStatus === 'Close') {
             return { 
               ...t, 
@@ -402,7 +370,6 @@ export default function DashboardContent() {
             };
           }
           
-          // For other statuses, apply them directly
           return { 
             ...t, 
             status: newStatus, 
@@ -417,11 +384,9 @@ export default function DashboardContent() {
     setActiveStatusPopover(null);
   };
 
-  // Add calculateProgress helper function
   const calculateProgress = (loggedTime, estimatedTime) => {
     if (!estimatedTime) return 0;
     
-    // Parse estimatedTime if it's a string
     let estimatedMinutes;
     if (typeof estimatedTime === 'string') {
       estimatedMinutes = parseEstimatedTime(estimatedTime);
@@ -431,7 +396,6 @@ export default function DashboardContent() {
     
     if (estimatedMinutes === 0) return 0;
     
-    // Ensure loggedTime is properly parsed to minutes
     let loggedMinutes;
     if (typeof loggedTime === 'string') {
       loggedMinutes = parseEstimatedTime(loggedTime);
@@ -513,15 +477,6 @@ export default function DashboardContent() {
           task={selectedTask}
         />
       )}
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={confirmDeleteTask}
-        title="Delete Task"
-        message="Are you sure you want to delete this task?"
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
     </div>
   );
 } 
