@@ -2,8 +2,8 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import styles from './SidePanel.module.css';
 import { users } from '../../models/users';
 import { useUser } from '../../context/UserContext';
-import TimeLoggingModal from '../../components/ui/TimeLoggingModal';
-import Toast from '../../components/ui/Toast';
+import TimeLoggingModal from '../ui/TimeLoggingModal';
+import Toast from '../ui/Toast';
 
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 const STATUS_OPTIONS = ['Open', 'In Progress', 'Closed'];
@@ -570,20 +570,7 @@ export default function SidePanel({
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => {
-                    if (task) {
-                      setIsEditing(false);
-                      setForm({
-                        ...initialFormState,
-                        ...task,
-                        estimatedTime: task.estimatedTime || '',
-                        loggedTime: task.loggedTime || 0,
-                      });
-                      setAssigneeInput(task.assignee || '');
-                    } else {
-                      onClose();
-                    }
-                  }}
+                  onClick={onClose}
                   className={styles.cancelButton}
                 >
                   Cancel

@@ -29,9 +29,9 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
 
     // Filter tasks based on role
     const filteredTasks = tasks.filter(task => {
-      if (!role || !username) return false; // Don't show any tasks if no role or username
+      if (!role || !username) return false;
       if (role.toLowerCase() === 'manager') {
-        return true; // Manager sees all tasks
+        return true;
       }
       return task.assignee?.toLowerCase() === username.toLowerCase();
     });
@@ -42,7 +42,6 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
     const inProgressTasksByDay = [];
 
     last7Days.forEach(date => {
-      // Get tasks that existed on or before this date
       const tasksUpToDate = filteredTasks.filter(task => {
         const creationDate = new Date(task.createdAt || task.created_at);
         if (isNaN(creationDate.getTime())) return false;
@@ -51,7 +50,6 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
       
       totalTasksByDay.push(tasksUpToDate.length);
       
-      // Completed/closed tasks count
       const completedTasks = tasksUpToDate.filter(task => {
         if (task.status === 'Closed' || task.status === 'Pending Approval') {
           const completionDate = new Date(task.lastUpdated || task.updatedAt || task.updated_at);
@@ -63,7 +61,6 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
       
       completedTasksByDay.push(completedTasks.length);
 
-      // In progress tasks count
       const inProgressTasks = tasksUpToDate.filter(task => {
         return task.status === 'In Progress';
       });
@@ -87,31 +84,46 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
         {
           label: 'Total Tasks',
           data: totalTasksByDay,
-          backgroundColor: 'rgba(79, 70, 229, 0.8)',
+          backgroundColor: 'rgba(79, 70, 229, 0.1)',
           borderColor: 'rgba(79, 70, 229, 1)',
           borderWidth: 2,
-          borderRadius: 4,
-          barPercentage: 0.6,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
           order: 3
         },
         {
           label: 'In Progress',
           data: inProgressTasksByDay,
-          backgroundColor: 'rgba(245, 158, 11, 0.8)',
+          backgroundColor: 'rgba(245, 158, 11, 0.1)',
           borderColor: 'rgba(245, 158, 11, 1)',
           borderWidth: 2,
-          borderRadius: 4,
-          barPercentage: 0.6,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgba(245, 158, 11, 1)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
           order: 2
         },
         {
           label: 'Completed',
           data: completedTasksByDay,
-          backgroundColor: 'rgba(16, 185, 129, 0.8)',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
           borderColor: 'rgba(16, 185, 129, 1)',
           borderWidth: 2,
-          borderRadius: 4,
-          barPercentage: 0.6,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
           order: 1
         }
       ]
@@ -119,7 +131,7 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
 
     // Create chart
     chartInstance.current = new Chart(ctx, {
-      type: 'bar',
+      type: 'line',
       data: data,
       options: {
         responsive: true,
@@ -131,6 +143,10 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
             bottom: 10,
             left: 25
           }
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false
         },
         plugins: {
           legend: {
@@ -178,7 +194,7 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
           y: {
             beginAtZero: true,
             ticks: {
-              stepSize: 3,
+              stepSize: 1,
               precision: 0,
               color: '#555',
               font: {
@@ -192,8 +208,8 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
               }
             },
             grid: {
-              color: 'rgba(200, 200, 200, 0.3)',
-              lineWidth: 1
+              color: 'rgba(200, 200, 200, 0.2)',
+              drawBorder: false
             },
             title: {
               display: true,
@@ -207,13 +223,13 @@ const TaskTrendLine = ({ tasks = [], role = '', username = '' }) => {
                 bottom: window.innerWidth < 768 ? 2 : 5
               }
             },
-            suggestedMax: Math.max(...totalTasksByDay) + 3,
+            suggestedMax: Math.max(...totalTasksByDay) + 2,
             suggestedMin: 0
           }
         },
         animation: {
-          duration: 800,
-          easing: 'easeOutQuad'
+          duration: 1000,
+          easing: 'easeInOutQuart'
         }
       }
     });
